@@ -328,3 +328,6 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
+/enc_temp_folder
+/threadpools/threadpools.vcxproj.filters
+/threadpools/threadpools.vcxproj

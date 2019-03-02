@@ -9,7 +9,7 @@ ThreadPool::ThreadPool(int threadN) :done(false), threadNum(threadN)
 	try {
 		for (int i = 0; i < threadNum; i++) {
 			threadPool.emplace_back(&ThreadPool::worker_thread, this);
-			threadPool.back().detach();
+//			threadPool.back().detach();
 		}
 	}
 	catch (...) {
@@ -20,15 +20,19 @@ ThreadPool::ThreadPool(int threadN) :done(false), threadNum(threadN)
 
 void ThreadPool::worker_thread()
 {
-	std::unique_lock<std::mutex> wakeLock{ queueMutex };
 	while (!done) {
-		wakeCV.wait(wakeLock, [this](){ return !TaskList.empty() ; });
+		std::unique_lock<std::mutex> wakeLock{ queueMutex };
+		wakeCV.wait(wakeLock, [this](){ return !TaskList.empty()||done; });
 		//std:: cout << "after wakeid:"<<std::this_thread::get_id()<<" "<<TaskList.size() ;
+		if (done) {
+			//std::cout <<"thread"<< std::this_thread::get_id() <<"exit "<< std::endl;
+			break;
+		}
 		auto funcToExcu = TaskList.front();
 		TaskList.pop();
 		wakeLock.unlock();
 		funcToExcu();
-		wakeLock.lock();
+		//wakeLock.lock();
 		//return;
 	}
 }
@@ -36,9 +40,16 @@ void ThreadPool::worker_thread()
 ThreadPool::~ThreadPool()
 {
 	done = true;
+	wakeCV.notify_all();
 	for (auto &th : threadPool) {
-		th.~thread();
+		if (th.joinable()) {
+			th.join();
+			std::cout << "join end" << std::endl;
+			th.~thread();
+		}
+		else {
+			th.~thread();
+		}
 	}
-	//Sleep(10000);
 }
 
